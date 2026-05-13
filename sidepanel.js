@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial load
     updateDisplay();
 
-    // Click Logic
+    // --- EXISTING BLOCK LOGIC ---
     blockBtn.onclick = () => {
         console.log("Button was clicked!");
         const url = inputField.value.trim().toLowerCase();
@@ -34,6 +34,25 @@ document.addEventListener('DOMContentLoaded', () => {
                         updateDisplay();
                     });
                 }
+            });
+        }
+    };
+
+    // --- NEW UNBLOCK ALL LOGIC ---
+    const clearBtn = document.createElement("button");
+    clearBtn.textContent = "Unblock All";
+    clearBtn.style.marginTop = "10px";
+    clearBtn.style.background = "#333"; 
+    clearBtn.style.color = "#ff80ab";
+    
+    // Add the button to the UI card
+    document.querySelector(".card").appendChild(clearBtn);
+
+    clearBtn.onclick = () => {
+        if(confirm("Are you sure you want to unblock everything?")) {
+            chrome.storage.local.set({ blockedSites: [] }, () => {
+                console.log("Blocklist cleared.");
+                updateDisplay(); // Refresh the list without reloading the whole panel
             });
         }
     };
