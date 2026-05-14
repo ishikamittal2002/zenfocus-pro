@@ -10,13 +10,26 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 1. SITE BLOCKER LOGIC ---
 
     const updateBlockListUI = () => {
-        chrome.storage.local.get(["blockedSites"], (result) => {
-            const list = result.blockedSites || [];
-            listContainer.innerHTML = list.map(site => 
-                `<div class="block-item">🚫 ${site}</div>`
-            ).join("");
+    chrome.storage.local.get(["blockedSites"], (result) => {
+        const list = result.blockedSites || [];
+        listContainer.innerHTML = list.map((site, index) => `
+            <div class="block-item">
+                <span>🚫 ${site}</span>
+                <button class="delete-btn" data-index="${index}" style="width: auto; margin: 0; padding: 2px 8px; background: transparent; color: #ff80ab; font-size: 12px; border: 1px solid #ff80ab;">
+                    Remove
+                </button>
+            </div>
+        `).join("");
+
+        // Attach event listeners to all new delete buttons
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                const indexToRemove = e.target.getAttribute('data-index');
+                removeSingleSite(indexToRemove);
+            };
         });
-    };
+    });
+};
 
     blockBtn.onclick = () => {
         const url = inputField.value.trim().toLowerCase();
@@ -111,4 +124,21 @@ document.addEventListener('DOMContentLoaded', () => {
             refreshTabManager();
         }
     });
+
+
+    const removeSingleSite = (index) => {
+    chrome.storage.local.get(["blockedSites"], (result) => {
+        let list = result.blockedSites || [];
+        // Remove the item at the specific index
+        list.splice(index, 1);
+        
+        // Save the updated list back to storage
+        chrome.storage.local.set({ blockedSites: list }, () => {
+            console.log("Site removed.");
+            updateBlockListUI();
+        });
+    });
+    };
+
+
 });
