@@ -3,7 +3,7 @@
   "name": "ZenFocus Pro",
   "version": "1.0",
   "description": "A deep-work suite with Reading Estimates and Site Blocking.",
-  "permissions": ["storage", "sidePanel", "declarativeNetRequest", "scripting", "activeTab"],
+  "permissions": ["storage", "sidePanel", "tabs", "scripting", "activeTab"],
   "host_permissions": ["<all_urls>"],
   "action": {
     "default_title": "Open ZenFocus"

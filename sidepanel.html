@@ -3,51 +3,88 @@
 <head>
   <style>
     body { 
-      background: #121212; color: #ff80ab; 
-      font-family: 'Inter', sans-serif; padding: 20px; 
+      background: #121212; 
+      color: #ff80ab; 
+      font-family: 'Inter', -apple-system, sans-serif; 
+      padding: 20px; 
+      margin: 0;
     }
-    h2 { border-bottom: 1px solid #333; padding-bottom: 10px; }
+    h2 { border-bottom: 1px solid #333; padding-bottom: 10px; margin-top: 0; }
+    
     .card {
-      background: #1e1e1e; padding: 15px;
-      border-radius: 10px; margin-bottom: 15px;
+      background: #1e1e1e; 
+      padding: 15px;
+      border-radius: 10px; 
+      margin-bottom: 15px;
       border: 1px solid #333;
     }
+
     button {
-      background: #ff80ab; color: #121212;
-      border: none; width: 100%; padding: 10px;
-      border-radius: 5px; cursor: pointer; font-weight: 800;
+      background: #ff80ab; 
+      color: #121212;
+      border: none; 
+      width: 100%; 
+      padding: 10px;
+      border-radius: 5px; 
+      cursor: pointer; 
+      font-weight: 800;
       margin-top: 10px;
+      transition: opacity 0.2s;
     }
+    button:hover { opacity: 0.9; }
+
     input {
-      width: 90%; background: #222; border: 1px solid #ff80ab;
-      color: white; padding: 8px; border-radius: 5px;
+      width: 90%; 
+      background: #222; 
+      border: 1px solid #ff80ab;
+      color: white; 
+      padding: 8px; 
+      border-radius: 5px;
+      outline: none;
     }
-    /* Style for the list items that appear later */
+
     .block-item {
-       .block-item {
-        color: #ff80ab;
-        background: #252525;
-        margin: 8px 0;
-        padding: 10px;
-        border-radius: 8px;
-        font-size: 14px;
-        border-left: 3px solid #ff80ab; /* Adds a nice pink accent bar */
-        display: flex;
-        justify-content: space-between;
-        }
+      color: #ff80ab;
+      background: #252525;
+      margin: 8px 0;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 14px;
+      border-left: 3px solid #ff80ab;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .secondary-btn {
+      background: #333 !important;
+      color: #ff80ab !important;
     }
   </style>
 </head>
 <body>
   <h2>ZenFocus Mode</h2>
   
-  <div class="card">
-    <p style="color: #bbb; font-size: 14px;">Block distracting sites:</p>
+  <!-- Site Blocker Section -->
+  <div class="card" id="blockerCard">
+    <p style="color: #bbb; font-size: 14px; margin-top: 0;">Block distracting sites:</p>
     <input type="text" id="siteUrl" placeholder="facebook.com">
     <button id="addBlock">Block Site</button>
   </div>
 
   <div id="blockList"></div>
+
+  <!-- Tab Manager Section -->
+  <div class="card" id="tabManagerCard">
+    <p style="color: #bbb; font-size: 14px; margin-top: 0;">Tab Manager:</p>
+    <div id="tabStats" style="font-weight: bold; margin-bottom: 10px;">
+      Scanning tabs...
+    </div>
+    <button id="closeOthers" class="secondary-btn">
+      Close Other Tabs
+    </button>
+    <div id="tabList" style="margin-top: 10px; font-size: 12px; color: #ff80ab; line-height: 1.6;"></div>
+  </div>
 
   <script src="sidepanel.js"></script>
 </body>
