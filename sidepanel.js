@@ -1,45 +1,104 @@
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("Sidepanel logic initialized!");
+    console.log("ZenFocus Pro Initialized");
 
-    // --- DOM ELEMENTS ---
+    // --- TASK LIST LOGIC ---
+    const taskInput = document.getElementById("taskInput");
+    const priorityInput = document.getElementById("priorityInput");
+    const addTaskBtn = document.getElementById("addTask");
+    const taskListContainer = document.getElementById("taskList");
+
+    const updateTaskListUI = () => {
+        chrome.storage.local.get(["tasks"], (result) => {
+            const tasks = result.tasks || [];
+            const priorityOrder = { high: 1, mid: 2, low: 3 };
+            tasks.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+
+            taskListContainer.innerHTML = tasks.map((task, index) => `
+                <div class="block-item" style="border-left: 4px solid ${getPriorityColor(task.priority)}">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" class="task-check" data-index="${index}" ${task.completed ? 'checked' : ''}>
+                        <span class="${task.completed ? 'completed-text' : ''}">${task.text}</span>
+                    </div>
+                    <button class="task-del" data-index="${index}" style="width:auto; margin:0; padding:2px 8px; background:transparent; color:#ff80ab; border:1px solid #ff80ab; font-size:10px;">X</button>
+                </div>
+            `).join("");
+
+            document.querySelectorAll('.task-check').forEach(cb => {
+                cb.onchange = (e) => toggleTask(e.target.dataset.index);
+            });
+            document.querySelectorAll('.task-del').forEach(btn => {
+                btn.onclick = (e) => deleteTask(e.target.dataset.index);
+            });
+        });
+    };
+
+    const getPriorityColor = (p) => {
+        const colors = { high: '#ff4444', mid: '#ffbb33', low: '#ff80ab' };
+        return colors[p] || colors.low;
+    };
+
+    addTaskBtn.onclick = () => {
+        const text = taskInput.value.trim();
+        const priority = priorityInput.value;
+        if (text) {
+            chrome.storage.local.get(["tasks"], (result) => {
+                const tasks = result.tasks || [];
+                tasks.push({ text, priority, completed: false });
+                chrome.storage.local.set({ tasks }, () => {
+                    taskInput.value = "";
+                    updateTaskListUI();
+                });
+            });
+        }
+    };
+
+    const toggleTask = (index) => {
+        chrome.storage.local.get(["tasks"], (result) => {
+            let tasks = result.tasks || [];
+            tasks[index].completed = !tasks[index].completed;
+            chrome.storage.local.set({ tasks }, updateTaskListUI);
+        });
+    };
+
+    const deleteTask = (index) => {
+        chrome.storage.local.get(["tasks"], (result) => {
+            let tasks = result.tasks || [];
+            tasks.splice(index, 1);
+            chrome.storage.local.set({ tasks }, updateTaskListUI);
+        });
+    };
+
+    // --- SITE BLOCKER LOGIC ---
     const blockBtn = document.getElementById("addBlock");
-    const inputField = document.getElementById("siteUrl");
+    const siteInput = document.getElementById("siteUrl");
     const listContainer = document.getElementById("blockList");
     const blockerCard = document.getElementById("blockerCard");
 
-    // --- 1. SITE BLOCKER LOGIC ---
-
     const updateBlockListUI = () => {
-    chrome.storage.local.get(["blockedSites"], (result) => {
-        const list = result.blockedSites || [];
-        listContainer.innerHTML = list.map((site, index) => `
-            <div class="block-item">
-                <span>🚫 ${site}</span>
-                <button class="delete-btn" data-index="${index}" style="width: auto; margin: 0; padding: 2px 8px; background: transparent; color: #ff80ab; font-size: 12px; border: 1px solid #ff80ab;">
-                    Remove
-                </button>
-            </div>
-        `).join("");
+        chrome.storage.local.get(["blockedSites"], (result) => {
+            const list = result.blockedSites || [];
+            listContainer.innerHTML = list.map((site, index) => `
+                <div class="block-item">
+                    <span>🚫 ${site}</span>
+                    <button class="delete-btn" data-index="${index}" style="width: auto; margin: 0; padding: 2px 8px; background: transparent; color: #ff80ab; font-size: 12px; border: 1px solid #ff80ab;">Remove</button>
+                </div>
+            `).join("");
 
-        // Attach event listeners to all new delete buttons
-        document.querySelectorAll('.delete-btn').forEach(btn => {
-            btn.onclick = (e) => {
-                const indexToRemove = e.target.getAttribute('data-index');
-                removeSingleSite(indexToRemove);
-            };
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.onclick = (e) => removeSingleSite(e.target.getAttribute('data-index'));
+            });
         });
-    });
-};
+    };
 
     blockBtn.onclick = () => {
-        const url = inputField.value.trim().toLowerCase();
+        const url = siteInput.value.trim().toLowerCase();
         if (url) {
             chrome.storage.local.get(["blockedSites"], (result) => {
                 const newList = result.blockedSites || [];
                 if (!newList.includes(url)) {
                     newList.push(url);
                     chrome.storage.local.set({ blockedSites: newList }, () => {
-                        inputField.value = "";
+                        siteInput.value = "";
                         updateBlockListUI();
                     });
                 }
@@ -47,98 +106,53 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Create and Add Unblock All Button
+    const removeSingleSite = (index) => {
+        chrome.storage.local.get(["blockedSites"], (result) => {
+            let list = result.blockedSites || [];
+            list.splice(index, 1);
+            chrome.storage.local.set({ blockedSites: list }, updateBlockListUI);
+        });
+    };
+
+    // Add Unblock All Button
     const clearBtn = document.createElement("button");
     clearBtn.textContent = "Unblock All";
     clearBtn.className = "secondary-btn";
     blockerCard.appendChild(clearBtn);
-
     clearBtn.onclick = () => {
-        if(confirm("Are you sure you want to unblock everything?")) {
-            chrome.storage.local.set({ blockedSites: [] }, () => {
-                updateBlockListUI();
-            });
-        }
+        if(confirm("Clear blocklist?")) chrome.storage.local.set({ blockedSites: [] }, updateBlockListUI);
     };
 
-    // --- 2. TAB MANAGER LOGIC ---
-
+    // --- TAB MANAGER LOGIC ---
     const refreshTabManager = () => {
-        // Requires "tabs" permission in manifest.json
         chrome.tabs.query({}, (tabs) => {
-            const statsElement = document.getElementById("tabStats");
-            const listElement = document.getElementById("tabList");
-            
-            statsElement.innerText = `Total Tabs: ${tabs.length}`;
-
+            document.getElementById("tabStats").innerText = `Total Tabs: ${tabs.length}`;
             const counts = {};
             tabs.forEach(tab => {
                 try {
                     if (tab.url) {
-                        const url = new URL(tab.url);
-                        const domain = url.hostname.replace('www.', '');
+                        const domain = new URL(tab.url).hostname.replace('www.', '');
                         counts[domain] = (counts[domain] || 0) + 1;
                     }
-                } catch(e) { /* Ignore internal chrome:// pages */ }
+                } catch(e) {}
             });
-
-            // Sort and show top 3 domains
-            const topDomains = Object.entries(counts)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 3);
-
-            listElement.innerHTML = topDomains.length > 0 
-                ? topDomains.map(([domain, count]) => `<div>• ${domain} (${count})</div>`).join("")
-                : "<div>No active domains found.</div>";
+            const topDomains = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+            document.getElementById("tabList").innerHTML = topDomains.map(([domain, count]) => `<div>• ${domain} (${count})</div>`).join("");
         });
     };
 
-    // Panic Button: Close all tabs except active one
     document.getElementById("closeOthers").onclick = () => {
-        if(confirm("Close all other tabs?")) {
-            chrome.tabs.query({active: false, currentWindow: true}, (tabs) => {
-                const ids = tabs.map(t => t.id);
-                chrome.tabs.remove(ids, () => {
-                    refreshTabManager();
-                });
-            });
-        }
+        chrome.tabs.query({active: false, currentWindow: true}, (tabs) => {
+            chrome.tabs.remove(tabs.map(t => t.id), refreshTabManager);
+        });
     };
 
-    // INITIALIZE
+    chrome.tabs.onCreated.addListener(refreshTabManager);
+    chrome.tabs.onRemoved.addListener(refreshTabManager);
+    chrome.tabs.onUpdated.addListener((id, info) => { if(info.status === 'complete') refreshTabManager(); });
+
+    // --- INITIALIZE EVERYTHING ---
+    updateTaskListUI();
     updateBlockListUI();
     refreshTabManager();
-
-    
-    // --- 3. REAL-TIME LISTENERS ---
-
-    // Refresh when a new tab is opened
-    chrome.tabs.onCreated.addListener(refreshTabManager);
-
-    // Refresh when a tab is closed
-    chrome.tabs.onRemoved.addListener(refreshTabManager);
-
-    // Refresh when a tab finishes loading a new URL
-    chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-        if (changeInfo.status === 'complete') {
-            refreshTabManager();
-        }
-    });
-
-
-    const removeSingleSite = (index) => {
-    chrome.storage.local.get(["blockedSites"], (result) => {
-        let list = result.blockedSites || [];
-        // Remove the item at the specific index
-        list.splice(index, 1);
-        
-        // Save the updated list back to storage
-        chrome.storage.local.set({ blockedSites: list }, () => {
-            console.log("Site removed.");
-            updateBlockListUI();
-        });
-    });
-    };
-
-
 });
