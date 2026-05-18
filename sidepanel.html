@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
   <style>
     body { background: #121212; color: #ff80ab; font-family: 'Inter', sans-serif; padding: 20px; margin: 0; }
-    h2 { border-bottom: 1px solid #333; padding-bottom: 10px; margin-top: 0; }
+    h2 { border-bottom: 1px solid #333; padding-bottom: 10px; margin-top: 0; display: flex; justify-content: space-between; align-items: center; }
     .card { background: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #333; }
     button { background: #ff80ab; color: #121212; border: none; width: 100%; padding: 10px; border-radius: 5px; cursor: pointer; font-weight: 800; margin-top: 10px; transition: opacity 0.2s; }
     button:hover { opacity: 0.9; }
@@ -12,11 +13,46 @@
     .secondary-btn { background: #333 !important; color: #ff80ab !important; }
     .task-row { display: flex; gap: 5px; margin-bottom: 10px; }
     .completed-text { text-decoration: line-through; opacity: 0.5; }
-    #tabList div { margin-bottom: 4px; }
+    
+    /* Analytics & Toggle Styles */
+    .metric-title { font-size: 22px; font-weight: bold; margin-bottom: 5px; }
+    .stat-row { font-size: 12px; color: #bbb; margin-bottom: 12px; display: flex; gap: 10px; }
+    .tracker-item { display: flex; justify-content: space-between; font-size: 13px; margin: 4px 0; border-bottom: 1px dashed #333; padding-bottom: 2px; }
+    
+    /* Modern Switch Styling */
+    .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 34px; border: 1px solid #ff80ab; }
+    .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: #ff80ab; transition: .4s; border-radius: 50%; }
+    input:checked + .slider { background-color: #ff80ab; }
+    input:checked + .slider:before { transform: translateX(24px); background-color: #121212; }
+    
+    .status-text { font-size: 12px; font-weight: normal; margin-right: 10px; color: #bbb; }
   </style>
 </head>
 <body>
-  <h2>ZenFocus Pro</h2>
+  <h2>
+    <span>ZenFocus Pro</span>
+    <div style="display: flex; align-items: center;">
+      <span id="statusLabel" class="status-text">OFF</span>
+      <label class="switch">
+        <input type="checkbox" id="focusToggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+  </h2>
+  
+  <div class="card" id="analyticsCard">
+    <p style="color: #bbb; font-size: 14px; margin-top: 0;">Session Analytics:</p>
+    <div class="metric-title" id="scoreDisplay">Distraction Score: 0%</div>
+    <div class="stat-row">
+      <span>🔄 Switches: <strong id="switchDisplay" style="color:#ff80ab;">0</strong></span>
+      <span>🛑 Blocks: <strong id="blockDisplay" style="color:#ff80ab;">0</strong></span>
+    </div>
+    <p style="color: #bbb; font-size: 12px; margin-bottom: 6px; font-weight: bold;">Top Domains By Time:</p>
+    <div id="timeTrackerList">Scanning metrics...</div>
+    <button id="resetAnalytics" class="secondary-btn" style="padding: 5px; font-size: 11px; margin-top: 10px;">Reset Metrics</button>
+  </div>
   
   <div class="card" id="taskCard">
     <p style="color: #bbb; font-size: 14px; margin-top: 0;">Priority Tasks:</p>

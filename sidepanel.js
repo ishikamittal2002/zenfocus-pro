@@ -1,7 +1,101 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log("ZenFocus Pro Initialized");
 
-    // --- TASK LIST LOGIC ---
+    // --- STATE MACHINE TOGGLE SWITCH ---
+    const focusToggle = document.getElementById("focusToggle");
+    const statusLabel = document.getElementById("statusLabel");
+
+    // Explicitly load initial system state as a true boolean evaluation
+    chrome.storage.local.get(["isFocusModeActive"], (data) => {
+        const isActive = data.isFocusModeActive === true; // Strict boolean check
+        focusToggle.checked = isActive;
+        statusLabel.innerText = isActive ? "ON" : "OFF";
+        statusLabel.style.color = isActive ? "#ff80ab" : "#bbb";
+    });
+
+    // Capture and immediately save toggle state shifts
+    focusToggle.onchange = () => {
+        const isActive = focusToggle.checked;
+        statusLabel.innerText = isActive ? "ON" : "OFF";
+        statusLabel.style.color = isActive ? "#ff80ab" : "#bbb";
+        
+        chrome.storage.local.set({ 
+            isFocusModeActive: isActive,
+            lastActiveTimestamp: Date.now()
+        }, () => {
+            console.log("Focus mode changed to:", isActive);
+            updateAnalyticsUI(); // Instantly update dashboard UI state
+        });
+    };
+
+    // --- 1. FOCUS ANALYTICS LOGIC ---
+    const scoreDisplay = document.getElementById("scoreDisplay");
+    const switchDisplay = document.getElementById("switchDisplay");
+    const blockDisplay = document.getElementById("blockDisplay");
+    const timeTrackerList = document.getElementById("timeTrackerList");
+    const resetAnalyticsBtn = document.getElementById("resetAnalytics");
+
+    const formatTime = (seconds) => {
+        if (seconds < 60) return `${seconds}s`;
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}m ${secs}s`;
+    };
+
+    const updateAnalyticsUI = () => {
+        chrome.storage.local.get(["tabSwitches", "blockedAttempts", "siteTimes", "blockedSites"], (data) => {
+            const switches = data.tabSwitches || 0;
+            const blocks = data.blockedAttempts || 0;
+            const siteTimes = data.siteTimes || {};
+            const blockedSites = data.blockedSites || [];
+
+            switchDisplay.innerText = switches;
+            blockDisplay.innerText = blocks;
+
+            const sortedSites = Object.entries(siteTimes)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+
+            if (sortedSites.length === 0) {
+                timeTrackerList.innerHTML = "<div style='color:#666;'>No browsing data recorded yet.</div>";
+            } else {
+                timeTrackerList.innerHTML = sortedSites.map(([domain, seconds]) => {
+                    const isDistracting = blockedSites.some(site => domain.includes(site));
+                    return `
+                        <div class="tracker-item">
+                            <span style="color: ${isDistracting ? '#ff4444' : '#fff'}">${isDistracting ? '[Blocked] ' : ''}${domain}</span>
+                            <span>${formatTime(seconds)}</span>
+                        </div>
+                    `;
+                }).join("");
+            }
+
+            let distractingTime = 0;
+            let totalTrackedTime = 0;
+            Object.entries(siteTimes).forEach(([domain, seconds]) => {
+                totalTrackedTime += seconds;
+                if (blockedSites.some(site => domain.includes(site))) distractingTime += seconds;
+            });
+
+            const penaltyScore = (distractingTime * 1.0) + (switches * 15) + (blocks * 40);
+            const scorePercentage = totalTrackedTime > 0 
+                ? Math.min(Math.round((penaltyScore / (totalTrackedTime + 1)) * 100), 100)
+                : 0;
+
+            scoreDisplay.innerText = `Distraction Score: ${scorePercentage}%`;
+            if (scorePercentage > 65) scoreDisplay.style.color = "#ff4444";
+            else if (scorePercentage > 35) scoreDisplay.style.color = "#ffbb33";
+            else scoreDisplay.style.color = "#ff80ab";
+        });
+    };
+
+    resetAnalyticsBtn.onclick = () => {
+        if(confirm("Reset all analytical logs for this session?")) {
+            chrome.storage.local.set({ tabSwitches: 0, blockedAttempts: 0, siteTimes: {} }, updateAnalyticsUI);
+        }
+    };
+
+    // --- 2. TASK LIST LOGIC ---
     const taskInput = document.getElementById("taskInput");
     const priorityInput = document.getElementById("priorityInput");
     const addTaskBtn = document.getElementById("addTask");
@@ -68,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // --- SITE BLOCKER LOGIC ---
+    // --- 3. SITE BLOCKER LOGIC ---
     const blockBtn = document.getElementById("addBlock");
     const siteInput = document.getElementById("siteUrl");
     const listContainer = document.getElementById("blockList");
@@ -100,6 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     chrome.storage.local.set({ blockedSites: newList }, () => {
                         siteInput.value = "";
                         updateBlockListUI();
+                        updateAnalyticsUI();
                     });
                 }
             });
@@ -110,20 +205,27 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.storage.local.get(["blockedSites"], (result) => {
             let list = result.blockedSites || [];
             list.splice(index, 1);
-            chrome.storage.local.set({ blockedSites: list }, updateBlockListUI);
+            chrome.storage.local.set({ blockedSites: list }, () => {
+                updateBlockListUI();
+                updateAnalyticsUI();
+            });
         });
     };
 
-    // Add Unblock All Button
     const clearBtn = document.createElement("button");
     clearBtn.textContent = "Unblock All";
     clearBtn.className = "secondary-btn";
     blockerCard.appendChild(clearBtn);
     clearBtn.onclick = () => {
-        if(confirm("Clear blocklist?")) chrome.storage.local.set({ blockedSites: [] }, updateBlockListUI);
+        if(confirm("Clear blocklist?")) {
+            chrome.storage.local.set({ blockedSites: [] }, () => {
+                updateBlockListUI();
+                updateAnalyticsUI();
+            });
+        }
     };
 
-    // --- TAB MANAGER LOGIC ---
+    // --- 4. TAB MANAGER LOGIC ---
     const refreshTabManager = () => {
         chrome.tabs.query({}, (tabs) => {
             document.getElementById("tabStats").innerText = `Total Tabs: ${tabs.length}`;
@@ -151,7 +253,11 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.tabs.onRemoved.addListener(refreshTabManager);
     chrome.tabs.onUpdated.addListener((id, info) => { if(info.status === 'complete') refreshTabManager(); });
 
+    // Poll storage for real-time background tracker updates
+    setInterval(updateAnalyticsUI, 1000);
+
     // --- INITIALIZE EVERYTHING ---
+    updateAnalyticsUI();
     updateTaskListUI();
     updateBlockListUI();
     refreshTabManager();

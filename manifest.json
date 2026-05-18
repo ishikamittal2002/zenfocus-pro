@@ -8,7 +8,9 @@
     "sidePanel", 
     "tabs", 
     "scripting", 
-    "activeTab"
+    "activeTab",
+    "idle",
+    "alarms"
   ],
   "host_permissions": ["<all_urls>"],
   "action": {
